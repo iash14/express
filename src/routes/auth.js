@@ -1,6 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const userModel = require('../data/users');
+const {
+  validateRequest,
+  registerValidation,
+  sanitizeInput,
+  preventNoSQLInjection
+} = require('../middleware/validationMiddleware');
 
 const generateToken = (id) =>
   `fake-jwt-token-${id}-${Date.now()}`;
@@ -16,19 +22,24 @@ const authenticateToken = (req, res, next) => {
   next();
 };
 
-router.post('/register', (req, res) => {
-  const { username, email, password } = req.body;
-  if (!username || !email || !password)
-    return res.status(400).json({ success: false, message: 'Заповніть всі поля' });
+router.post(
+    '/register',  
+    sanitizeInput,
+    preventNoSQLInjection,
+    validateRequest(registerValidation),
+    (req, res) => {
+        const { username, email, password } = req.body;
+        if (!username || !email || !password)
+            return res.status(400).json({ success: false, message: 'Заповніть всі поля' });
 
-  if (userModel.findByEmail(email))
-    return res.status(400).json({ success: false, message: 'Email існує' });
+        if (userModel.findByEmail(email))
+            return res.status(400).json({ success: false, message: 'Email існує' });
 
-  const user = userModel.create({ username, email, password });
-  const token = generateToken(user.id);
-  userModel.saveToken(user.id, token);
+        const user = userModel.create({ username, email, password });
+        const token = generateToken(user.id);
+        userModel.saveToken(user.id, token);
 
-  res.status(201).json({ success: true, token, user });
+        res.status(201).json({ success: true, token, user });
 });
 
 router.post('/login', (req, res) => {

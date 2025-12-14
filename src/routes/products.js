@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const productModel = require('../data/products');
 const userModel = require('../data/users');
+const {
+  validateRequest,
+  productValidation,
+  sanitizeInput,
+  preventNoSQLInjection
+} = require('../middleware/validationMiddleware');
 
 const authenticateToken = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
@@ -22,13 +28,18 @@ router.get('/:id', (req, res) => {
   res.json({ success: true, data: p });
 });
 
-router.post('/', authenticateToken, (req, res) => {
-  const p = productModel.create({
-    ...req.body,
-    createdBy: req.user.id,
-    inStock: req.body.quantity > 0
-  });
-  res.status(201).json({ success: true, data: p });
+router.post(
+    '/', 
+    authenticateToken,
+    sanitizeInput,
+    preventNoSQLInjection,
+    validateRequest(productValidation),(req, res) => {
+        const p = productModel.create({
+            ...req.body,
+            createdBy: req.user.id,
+            inStock: req.body.quantity > 0
+        });
+        res.status(201).json({ success: true, data: p });
 });
 
 router.put('/:id', authenticateToken, (req, res) => {
